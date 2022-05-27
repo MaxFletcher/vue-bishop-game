@@ -39,6 +39,73 @@ const canvasHeight = 480;
 const tileWidth = canvasWidth / boardColumns;
 const tileHeight = canvasHeight / boardRows;
 
+onMounted(() => {
+  // Create board
+  for (let r = 0; r < boardRows; r += 1) {
+    boardState.cells[r] = [];
+
+    for (let c = 0; c < boardColumns; c += 1) {
+      boardState.cells[r][c] = -1;
+    }
+  }
+
+  // Assign initial bishop positions on the board
+  boardState.cells[0][0] = BishopColour.White;
+  boardState.cells[1][0] = BishopColour.White;
+  boardState.cells[2][0] = BishopColour.White;
+  boardState.cells[3][0] = BishopColour.White;
+
+  boardState.cells[0][4] = BishopColour.Black;
+  boardState.cells[1][4] = BishopColour.Black;
+  boardState.cells[2][4] = BishopColour.Black;
+  boardState.cells[3][4] = BishopColour.Black;
+
+  // Get a reference to the canvas for drawing
+  canvas.value.width = canvasWidth;
+  canvas.value.height = canvasHeight;
+  canvasContext.value = canvas.value.getContext('2d')!;
+
+  // Add event listeners to game board
+  canvas.value.addEventListener('click', onBoardClick);
+  // canvas.value.addEventListener('')
+
+  drawBoard();
+});
+
+function onBoardClick(event: MouseEvent) {
+  const { offsetX, offsetY } = event;
+  const canvasRelativeX = (offsetX * canvas.value.width) / canvas.value.clientWidth;
+  const canvasRelativeY = (offsetY * canvas.value.height) / canvas.value.clientHeight;
+
+  // Find corresponding tile
+  const tx = Math.floor(canvasRelativeX / tileWidth);
+  const ty = Math.floor(canvasRelativeY / tileHeight);
+
+  // User has clicked a tile without a bishop on
+  if (boardState.cells[ty][tx] === -1) {
+    if (boardState.selectedCell && validMoves.value.length > 0) {
+      // Find a matching valid cell for this move
+      const i = validMoves.value.findIndex(cell => cell.row === ty && cell.column === tx);
+
+      if (i > -1) {
+        boardState.cells[ty][tx] = boardState.selectedCell.state;
+        boardState.cells[boardState.selectedCell.row][boardState.selectedCell.column] = -1;
+        boardState.selectedCell = null;
+        return;
+      }
+    }
+
+    boardState.selectedCell = null;
+    return;
+  }
+
+  boardState.selectedCell = {
+    row: ty,
+    column: tx,
+    state: boardState.cells[ty][tx],
+  };
+}
+
 function drawBoard() {
   // Clear screen
   const ctx = canvasContext.value;
@@ -78,6 +145,11 @@ function drawBoard() {
   });
 }
 
+/**
+ * Returns a colletion of valid tiles where a bishop can move to
+ * @param row The row of the cell to check
+ * @param col The column of the cell to check
+ */
 function getValidMoves(row: number, col: number) {
   const validCells: CellDefinition[] = [];
 
@@ -112,83 +184,18 @@ const validMoves = computed(() => {
 watch(validMoves, () => {
   drawBoard();
 });
-
-function onBoardClick(event: MouseEvent) {
-  const { offsetX, offsetY } = event;
-  const canvasRelativeX = (offsetX * canvas.value.width) / canvas.value.clientWidth;
-  const canvasRelativeY = (offsetY * canvas.value.height) / canvas.value.clientHeight;
-
-  // Find corresponding tile
-  const tx = Math.floor(canvasRelativeX / tileWidth);
-  const ty = Math.floor(canvasRelativeY / tileHeight);
-
-  // User has clicked a tile without a bishop on
-  if (boardState.cells[ty][tx] === -1) {
-    if (boardState.selectedCell && validMoves.value.length > 0) {
-      // Find a matching valid cell for this move
-      const i = validMoves.value.findIndex(cell => cell.row === ty && cell.column === tx);
-
-      if (i > -1) {
-        boardState.cells[ty][tx] = boardState.selectedCell.state;
-        boardState.cells[boardState.selectedCell.row][boardState.selectedCell.column] = -1;
-        boardState.selectedCell = null;
-        return;
-      }
-      else {
-        boardState.selectedCell = null;
-        return;
-      }
-    }
-  }
-
-  boardState.selectedCell = {
-    row: ty,
-    column: tx,
-    state: boardState.cells[ty][tx],
-  };
-}
-
-onMounted(() => {
-  // Create board
-  for (let r = 0; r < boardRows; r += 1) {
-    boardState.cells[r] = [];
-
-    for (let c = 0; c < boardColumns; c += 1) {
-      boardState.cells[r][c] = -1;
-    }
-  }
-
-  // Assign initial bishop positions on the board
-  boardState.cells[0][0] = BishopColour.White;
-  boardState.cells[1][0] = BishopColour.White;
-  boardState.cells[2][0] = BishopColour.White;
-  boardState.cells[3][0] = BishopColour.White;
-
-  boardState.cells[0][4] = BishopColour.Black;
-  boardState.cells[1][4] = BishopColour.Black;
-  boardState.cells[2][4] = BishopColour.Black;
-  boardState.cells[3][4] = BishopColour.Black;
-
-  // Get a reference to the canvas for drawing
-  canvas.value.width = canvasWidth;
-  canvas.value.height = canvasHeight;
-  canvasContext.value = canvas.value.getContext('2d')!;
-
-  // Add event listeners to game board
-  canvas.value.addEventListener('click', onBoardClick);
-  // canvas.value.addEventListener('')
-
-  drawBoard();
-});
 </script>
 
 <template>
   <div class="stack-vertical">
     <h2>Swap the bishops</h2>
-    <canvas id="game-canvas" ref="canvas"></canvas>
+    <canvas 
+      id="game-canvas"
+      ref="canvas"
+    />
 
     <div class="stack-horizontal">
-      {{boardState.selectedCell}}
+      {{ boardState.selectedCell }}
     </div>
   </div>
 </template>
