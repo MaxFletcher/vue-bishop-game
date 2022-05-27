@@ -25,5 +25,8 @@ module.exports = {
     'max-len': 'off',
     'arrow-parens': 'off',
     'no-use-before-define': 'off',
+    'no-continue': 'off',
+    'brace-style': ['error', 'stroustrup'],
+    'no-else-return': 'off',
   },
 };

@@ -40,43 +40,40 @@ const tileWidth = canvasWidth / boardColumns;
 const tileHeight = canvasHeight / boardRows;
 
 function drawBoard() {
-  canvasContext.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
+  // Clear screen
+  const ctx = canvasContext.value;
+  ctx.clearRect(0, 0, canvas.value.width, canvas.value.height);
 
+  // Draw board tiles
   for (let i = 0; i < boardRows; i += 1) {
     for (let j = 0; j < boardColumns; j += 1) {
       // eslint-disable-next-line no-nested-ternary
-      canvasContext.value.fillStyle = i % 2 === 0
+      ctx.fillStyle = i % 2 === 0
         ? j % 2 === 0 ? 'yellow' : 'green'
         : j % 2 === 0 ? 'green' : 'yellow';
-      canvasContext.value.fillRect(j * tileWidth, i * tileHeight, tileWidth, tileHeight);
+      ctx.fillRect(j * tileWidth, i * tileHeight, tileWidth, tileHeight);
     }
   }
 
+  // Draw bishops
   for (let r = 0; r < boardRows; r += 1) {
     const row = boardState.cells[r];
 
     for (let c = 0; c < boardColumns; c += 1) {
-      switch (row[c]) {
-        case BishopColour.Black:
-          canvasContext.value.fillStyle = 'black';
-          canvasContext.value.beginPath();
-          canvasContext.value.arc(c * tileWidth + 60, r * tileHeight + 60, 40, 0, 2 * Math.PI);
-          canvasContext.value.fill();
-          break;
-        case BishopColour.White:
-          canvasContext.value.fillStyle = 'white';
-          canvasContext.value.beginPath();
-          canvasContext.value.arc(c * tileWidth + 60, r * tileHeight + 60, 40, 0, 2 * Math.PI);
-          canvasContext.value.fill();
-          break;
-        default:
-          break;
-      }
+      if (row[c] === -1) continue;
+
+      ctx.fillStyle = row[c] === BishopColour.Black
+        ? 'black'
+        : 'white';
+      ctx.beginPath();
+      ctx.arc(c * tileWidth + 60, r * tileHeight + 60, 40, 0, 2 * Math.PI);
+      ctx.fill();
     }
   }
 
+  // Draw available
   validMoves.value.forEach(cell => {
-    canvasContext.value.fillStyle = 'rgba(63, 127, 191, 0.5)';
+    canvasContext.value.fillStyle = 'rgba(63, 127, 191, 0.75)';
     canvasContext.value.fillRect(cell.column * tileWidth, cell.row * tileHeight, tileWidth, tileHeight);
   });
 }
@@ -90,7 +87,7 @@ function getValidMoves(row: number, col: number) {
       const rowDiff = Math.abs(row - r);
       const colDiff = Math.abs(col - c);
 
-      if (r !== row && rowDiff === colDiff) {
+      if (r !== row && rowDiff === colDiff && cell === -1) {
         validCells.push({
           row: r,
           column: c,
@@ -124,6 +121,25 @@ function onBoardClick(event: MouseEvent) {
   // Find corresponding tile
   const tx = Math.floor(canvasRelativeX / tileWidth);
   const ty = Math.floor(canvasRelativeY / tileHeight);
+
+  // User has clicked a tile without a bishop on
+  if (boardState.cells[ty][tx] === -1) {
+    if (boardState.selectedCell && validMoves.value.length > 0) {
+      // Find a matching valid cell for this move
+      const i = validMoves.value.findIndex(cell => cell.row === ty && cell.column === tx);
+
+      if (i > -1) {
+        boardState.cells[ty][tx] = boardState.selectedCell.state;
+        boardState.cells[boardState.selectedCell.row][boardState.selectedCell.column] = -1;
+        boardState.selectedCell = null;
+        return;
+      }
+      else {
+        boardState.selectedCell = null;
+        return;
+      }
+    }
+  }
 
   boardState.selectedCell = {
     row: ty,
