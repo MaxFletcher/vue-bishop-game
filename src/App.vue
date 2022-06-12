@@ -31,8 +31,8 @@ const boardState: BoardState = reactive({
 const boardColumns = 5;
 const boardRows = 4;
 
-const canvas = ref<HTMLCanvasElement>(null!);
-const canvasContext = ref<CanvasRenderingContext2D>(null!);
+const canvas = ref<HTMLCanvasElement>();
+const canvasContext = ref<CanvasRenderingContext2D>();
 const canvasWidth = 640;
 const canvasHeight = 480;
 
@@ -61,12 +61,12 @@ onMounted(() => {
   boardState.cells[3][4] = BishopColour.Black;
 
   // Get a reference to the canvas for drawing
-  canvas.value.width = canvasWidth;
-  canvas.value.height = canvasHeight;
-  canvasContext.value = canvas.value.getContext('2d')!;
+  canvas.value!.width = canvasWidth;
+  canvas.value!.height = canvasHeight;
+  canvasContext.value = canvas.value!.getContext('2d')!;
 
   // Add event listeners to game board
-  canvas.value.addEventListener('click', onBoardClick);
+  canvas.value?.addEventListener('click', onBoardClick);
   // canvas.value.addEventListener('')
 
   drawBoard();
@@ -74,8 +74,8 @@ onMounted(() => {
 
 function onBoardClick(event: MouseEvent) {
   const { offsetX, offsetY } = event;
-  const canvasRelativeX = (offsetX * canvas.value.width) / canvas.value.clientWidth;
-  const canvasRelativeY = (offsetY * canvas.value.height) / canvas.value.clientHeight;
+  const canvasRelativeX = (offsetX * canvas.value!.width) / canvas.value!.clientWidth;
+  const canvasRelativeY = (offsetY * canvas.value!.height) / canvas.value!.clientHeight;
 
   // Find corresponding tile
   const tx = Math.floor(canvasRelativeX / tileWidth);
@@ -109,16 +109,16 @@ function onBoardClick(event: MouseEvent) {
 function drawBoard() {
   // Clear screen
   const ctx = canvasContext.value;
-  ctx.clearRect(0, 0, canvas.value.width, canvas.value.height);
+  ctx?.clearRect(0, 0, canvas.value!.width, canvas.value!.height);
 
   // Draw board tiles
   for (let i = 0; i < boardRows; i += 1) {
     for (let j = 0; j < boardColumns; j += 1) {
       // eslint-disable-next-line no-nested-ternary
-      ctx.fillStyle = i % 2 === 0
+      ctx!.fillStyle = i % 2 === 0
         ? j % 2 === 0 ? 'yellow' : 'green'
         : j % 2 === 0 ? 'green' : 'yellow';
-      ctx.fillRect(j * tileWidth, i * tileHeight, tileWidth, tileHeight);
+      ctx?.fillRect(j * tileWidth, i * tileHeight, tileWidth, tileHeight);
     }
   }
 
@@ -129,19 +129,19 @@ function drawBoard() {
     for (let c = 0; c < boardColumns; c += 1) {
       if (row[c] === -1) continue;
 
-      ctx.fillStyle = row[c] === BishopColour.Black
+      ctx!.fillStyle = row[c] === BishopColour.Black
         ? 'black'
         : 'white';
-      ctx.beginPath();
-      ctx.arc(c * tileWidth + 60, r * tileHeight + 60, 40, 0, 2 * Math.PI);
-      ctx.fill();
+      ctx?.beginPath();
+      ctx?.arc(c * tileWidth + 60, r * tileHeight + 60, 40, 0, 2 * Math.PI);
+      ctx?.fill();
     }
   }
 
   // Draw available
   validMoves.value.forEach(cell => {
-    canvasContext.value.fillStyle = 'rgba(63, 127, 191, 0.75)';
-    canvasContext.value.fillRect(cell.column * tileWidth, cell.row * tileHeight, tileWidth, tileHeight);
+    canvasContext.value!.fillStyle = 'rgba(63, 127, 191, 0.75)';
+    canvasContext.value?.fillRect(cell.column * tileWidth, cell.row * tileHeight, tileWidth, tileHeight);
   });
 }
 
@@ -152,14 +152,46 @@ function drawBoard() {
  */
 function getValidMoves(row: number, col: number) {
   const validCells: CellDefinition[] = [];
+  const obstructedCells: { row: number, column: number }[] = [];
 
-  for (let r = 0; r < boardRows; r += 1) {
-    for (let c = 0; c < boardColumns; c += 1) {
+  const selectedCell = boardState.cells[row][col];
+  if (selectedCell < 0 || selectedCell > 1) {
+    return obstructedCells;
+  }
+
+  // Calculate obstructed tiles
+  for (let r = 0; r < boardRows; r++) {
+    for (let c = 0; c < boardColumns; c++) {
+      const cell = boardState.cells[r][c];
+
+      // Ignore cell if it is empty or the same colour as the selected cell/bishop
+      if (cell > -1  && cell !== selectedCell) {
+        for (let r2 = 0; r2 < boardRows; r2++) {
+          for (let c2 = 0; c2 < boardColumns;  c2++) {
+            const rowDiff = Math.abs(r - r2);
+            const colDiff = Math.abs(c - c2);
+
+            if (rowDiff === colDiff) {
+              obstructedCells.push({
+                row: r2,
+                column: c2
+              });
+            }
+          }
+        }
+      }
+
+    }
+  }
+
+  // Calculate possible tiles available to move to
+  for (let r = 0; r < boardRows; r++) {
+    for (let c = 0; c < boardColumns; c++) {
       const cell = boardState.cells[r][c];
       const rowDiff = Math.abs(row - r);
       const colDiff = Math.abs(col - c);
 
-      if (r !== row && rowDiff === colDiff && cell === -1) {
+      if (r !== row && rowDiff === colDiff && cell === -1 && !obstructedCells.some(x => x.row === r && x.column === c)) {
         validCells.push({
           row: r,
           column: c,
